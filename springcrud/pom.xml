@@ -65,9 +65,12 @@
 			<artifactId>jakarta.persistence-api</artifactId>
 			<version>3.1.0</version>
 		</dependency>
-
-
-	</dependencies>
+		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-core</artifactId>
+			<version>3.2.11.RELEASE</version>
+		</dependency>
+ </dependencies>
 
 	<build>
 		<plugins>
