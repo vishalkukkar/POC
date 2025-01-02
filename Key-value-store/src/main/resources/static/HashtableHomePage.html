@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hashtable Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .loading {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .form-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        label {
+            margin-right: 10px;
+        }
+        input {
+            padding: 8px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hashtable Records</h1>
+
+    <!-- Form to add new record -->
+    <div class="form-container">
+        <h2>Add a New Record</h2>
+        <label for="key">Key:</label>
+        <input type="text" id="key" placeholder="Enter key" required>
+        <label for="value">Value:</label>
+        <input type="text" id="value" placeholder="Enter value" required>
+        <label for="expiredAt">Expire At (Unix timestamp):</label>
+        <input type="number" id="expiredAt" placeholder="Enter expiration time (e.g. 1672531199)" required>
+        <button onclick="addHashtableRecord()">Add Record</button>
+    </div>
+
+    <!-- Table to display records -->
+    <div class="loading" id="loadingMessage">Loading records...</div>
+    <table id="hashtableTable">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Expired At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Data will be populated here -->
+        </tbody>
+    </table>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8080';  // Adjust the base URL for your backend
+
+        // Function to fetch data and populate the table
+        function loadHashtableData() {
+            const tableBody = document.getElementById('tableBody');
+            const loadingMessage = document.getElementById('loadingMessage');
+
+            fetch(`${apiBaseUrl}/hashtables`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    tableBody.innerHTML = ''; // Clear the table before adding new rows
+                    loadingMessage.style.display = 'none'; // Hide loading message
+
+                    if (data.length === 0) {
+                        const noRecordsRow = document.createElement('tr');
+                        noRecordsRow.innerHTML = `<td colspan="4" style="text-align: center;">No records found</td>`;
+                        tableBody.appendChild(noRecordsRow);
+                    } else {
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.key}</td>
+                                <td>${item.value}</td>
+                                <td>${item.expiredAt ? new Date(item.expiredAt * 1000).toLocaleString() : 'Never'}</td>
+                                <td>
+                                    <button onclick="deleteHashtableRecord('${item.key}')">Delete</button>
+                                    <button onclick="updateHashtableRecord('${item.key}')">Update</button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);  // Log any error
+                    loadingMessage.style.display = 'none'; // Hide loading message
+                    const errorMessage = document.createElement('p');
+                    errorMessage.textContent = 'Failed to load records.';
+                    errorMessage.classList.add('error');
+                    document.body.appendChild(errorMessage);
+                });
+        }
+
+        // Function to add a new hashtable record
+        function addHashtableRecord() {
+            const key = document.getElementById('key').value;
+            const value = document.getElementById('value').value;
+            const expiredAt = document.getElementById('expiredAt').value;
+
+            if (!key || !value || !expiredAt) {
+                alert('Please fill out all fields.');
+                return;
+            }
+
+            const newRecord = {
+                key: key,
+                value: value,
+                expiredAt: parseInt(expiredAt)
+            };
+
+            fetch(`${apiBaseUrl}/hashtable`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newRecord)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to add record');
+                }
+                return response.json();
+            })
+            .then(() => {
+                loadHashtableData(); // Reload the data after adding a new record
+                document.getElementById('key').value = '';
+                document.getElementById('value').value = '';
+                document.getElementById('expiredAt').value = '';
+            })
+            .catch(error => {
+                console.error('Error adding record:', error);  // Log any error
+                alert('Failed to add record.');
+            });
+        }
+
+        // Function to delete a hashtable record
+        function deleteHashtableRecord(key) {
+            fetch(`${apiBaseUrl}/hashtable/${key}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete record');
+                }
+                return response.json();
+            })
+            .then(() => {
+                loadHashtableData(); // Reload the data after deleting a record
+            })
+            .catch(error => {
+                console.error('Error deleting record:', error);  // Log any error
+                alert('Failed to delete record.');
+            });
+        }
+
+        // Function to update a hashtable record
+        function updateHashtableRecord(key) {
+            const value = prompt('Enter new value for key ' + key);
+            const expiredAt = prompt('Enter new expiration time (Unix timestamp)');
+
+            if (!value || !expiredAt) {
+                alert('Please fill out both fields.');
+                return;
+            }
+
+            const updatedRecord = {
+                value: value,
+                expiredAt: parseInt(expiredAt)
+            };
+
+            fetch(`${apiBaseUrl}/hashtable/${key}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedRecord)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update record');
+                }
+                return response.json();
+            })
+            .then(() => {
+                loadHashtableData(); // Reload the data after updating a record
+            })
+            .catch(error => {
+                console.error('Error updating record:', error);  // Log any error
+                alert('Failed to update record.');
+            });
+        }
+
+        // Call the function to load data as soon as the page is loaded
+        window.onload = loadHashtableData;
+    </script>
+</body>
+</html>
