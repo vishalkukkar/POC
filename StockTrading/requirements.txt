@@ -1,7 +1,0 @@
-flask==2.3.3
-pandas==1.5.3
-yfinance==0.2.31
-flask-cors==4.0.0
-numpy==1.25.2
-requests==2.31.0
-alpaca-py==0.8.0
