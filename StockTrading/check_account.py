@@ -7,54 +7,62 @@ from datetime import datetime, timedelta
 from config import Config
 
 # Initialize clients
-trading_client = TradingClient(Config.ALPACA_API_KEY, Config.ALPACA_SECRET_KEY, paper=True)
-data_client = StockHistoricalDataClient(Config.ALPACA_API_KEY, Config.ALPACA_SECRET_KEY)
+trading_client = TradingClient(Config.API_KEY, Config.SECRET_KEY, paper=True)
+data_client = StockHistoricalDataClient(Config.API_KEY, Config.SECRET_KEY)
 
 def get_spy_52_week_high():
     try:
-        url = "https://data.alpaca.markets/v2/stocks/bars"
-        
-        headers = {
-            "accept": "application/json",
-            "APCA-API-KEY-ID": Config.ALPACA_API_KEY,
-            "APCA-API-SECRET-KEY": Config.ALPACA_SECRET_KEY
-        }
+        url = "https://data.alpaca.markets/v2/stocks/auctions"
         
         # Calculate dates for 52-week range
-        end = datetime.now() - timedelta(minutes=15)  # Add 15-minute delay
+        end = datetime.now()
         start = end - timedelta(days=365)
         
         params = {
-            "symbols": "SPY",
-            "timeframe": "1Day",
-            "start": start.strftime("%Y-%m-%d"),
-            "end": end.strftime("%Y-%m-%d"),
-            "adjustment": "raw",
-            "feed": "iex"  # Add IEX feed parameter
+            "symbols": "spy",
+            "start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "end": end.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "limit": 10000,
+            "feed": "sip",
+            "sort": "asc"
         }
         
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": API_KEY,
-            "APCA-API-SECRET-KEY": SECRET_KEY
+            "APCA-API-KEY-ID": Config.API_KEY,
+            "APCA-API-SECRET-KEY": Config.SECRET_KEY
         }
 
+        print("Fetching 52-week data...")
         response = requests.get(url, headers=headers, params=params)
+        print(f"Response status: {response.status_code}")
+        print(f"SPY data: {response.text}")
         
         if response.status_code == 200:
             data = response.json()
-            if 'bars' in data and 'SPY' in data['bars']:
-                bars = data['bars']['SPY']
-                high_price = max(bar['h'] for bar in bars)
-                print(f"\nSPY 52-Week High: ${high_price:.2f}")
-                return high_price
+            if 'auctions' in data and 'SPY' in data['auctions']:
+                # Extract all prices from both opening and closing auctions
+                prices = []
+                for auction in data['auctions']['SPY']:
+                    if auction.get('o'):  # Opening prices
+                        prices.extend([o['p'] for o in auction['o']])
+                    if auction.get('c'):  # Closing prices
+                        prices.extend([c['p'] for c in auction['c']])
+                
+                if prices:
+                    high_price = max(prices)
+                    print(f"\nSPY 52-Week High: ${high_price:.2f}")
+                    return high_price
+                else:
+                    print("No price data available")
             else:
-                print("No historical data available for SPY")
+                print("No auction data available for SPY")
         else:
             print(f"Error: {response.status_code} - {response.text}")
             
     except Exception as e:
         print(f"Error getting SPY 52-week high: {e}")
+        return None
 
 def get_spy_options():
     try:
@@ -72,11 +80,18 @@ def get_spy_options():
 
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": API_KEY,
-            "APCA-API-SECRET-KEY": SECRET_KEY
+            "APCA-API-KEY-ID": Config.API_KEY,
+            "APCA-API-SECRET-KEY": Config.SECRET_KEY
         }
 
+        print("Making request to options API...")
+        print(f"URL: {url}")
+        print(f"Headers: {headers}")
+        print(f"Params: {params}")
+        
         response = requests.get(url, headers=headers, params=params)
+        print(f"Options API response status: {response.status_code}")
+        print(f"Options API response: {response.text}")
         
         if response.status_code == 200:
             options_data = response.json()

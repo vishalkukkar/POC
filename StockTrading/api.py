@@ -3,15 +3,8 @@ from flask_cors import CORS
 import requests
 import uuid
 from datetime import datetime
-
-app = Flask(__name__)
-CORS(app)
-
-# Add API credentials
-API_KEY = "PKBI3NFXXW1OIC0W7O1H"
-SECRET_KEY = "SIbL1e17hrKtdbw9OvmvtOEkYEopTpInS5DKY5KS"
-
-from check_account import check_account, get_spy_price, get_spy_52_week_high, get_spy_options
+from config import Config  # Add this import
+from check_account import check_account, get_spy_price, get_spy_52_week_high, get_spy_options, get_positions, get_orders
 
 app = Flask(__name__)
 CORS(app)
@@ -54,12 +47,13 @@ def get_options_data():
         spy_params = {"symbols": "SPY", "feed": "iex"}
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": API_KEY,
-            "APCA-API-SECRET-KEY": SECRET_KEY
+            "APCA-API-KEY-ID": Config.API_KEY,
+            "APCA-API-SECRET-KEY": Config.SECRET_KEY
         }
         
         spy_response = requests.get(spy_quote_url, headers=headers, params=spy_params)
         if spy_response.status_code != 200:
+            print(f"SPY price error: {spy_response.status_code}")
             return jsonify({"error": "Failed to fetch SPY price"}), 500
             
         spy_data = spy_response.json()
@@ -98,13 +92,12 @@ def get_options_data():
 @app.route('/api/spy/auto-trade', methods=['GET'])
 def check_and_place_trade():
     try:
-        # Get current SPY data
         url = "https://data.alpaca.markets/v2/stocks/quotes/latest"
         params = {"symbols": "SPY", "feed": "iex"}
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": API_KEY,
-            "APCA-API-SECRET-KEY": SECRET_KEY
+            "APCA-API-KEY-ID": Config.API_KEY,     # Update this
+            "APCA-API-SECRET-KEY": Config.SECRET_KEY  # Update this
         }
         
         response = requests.get(url, headers=headers, params=params)
@@ -181,7 +174,7 @@ def check_and_place_trade():
         })
 
     except Exception as e:
-        print("Auto-trade error:", str(e))
+        print(f"Auto-trade error: {str(e)[:100]}")  # Limit error message length
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/spy/live', methods=['GET'])
@@ -194,8 +187,8 @@ def get_spy_live_data():
         }
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": API_KEY,
-            "APCA-API-SECRET-KEY": SECRET_KEY
+            "APCA-API-KEY-ID": Config.API_KEY,     # Update this
+            "APCA-API-SECRET-KEY": Config.SECRET_KEY  # Update this
         }
         
         response = requests.get(url, headers=headers, params=params)
